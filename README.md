@@ -1,14 +1,14 @@
 # NATURAL DISASTER DATA ANALYSIS
 
 1. OVERVIEW
-   This project is created to analyze gained data about natural disaster in the past, then it identifies patterns related to disaster frequency, distribution and impact on human life, as well as producing safety warning to timely respond to them.
+   This project is created to analyze data about natural disaster in the past, then identifying patterns related to disaster frequency, distribution and impact on human life, as well as producing safety warning to timely respond to them.
 
 2. RESEARCH QUESTIONS
    - Which types of natural disasters occur most frequently?
    - Which regions are most affected?
    - How has disaster frequency changed over time?
    - Which disaster types have the greatest human impact?
-   - How to cope with each type of disaster?
+   - Which factors lead to greater human impact from natural disasters?
 
 3. OBJECTIVES
    The project aims to apply data analysis and data science techniques to solve the problem of real-world disaster, including:
