@@ -3,6 +3,7 @@ import os
 import importlib.util
 
 import pandas as pd
+import matplotlib.pyplot as plt
 
 from PySide6.QtWidgets import (
     QApplication,
@@ -14,20 +15,31 @@ from PySide6.QtWidgets import (
     QComboBox,
     QTableWidget,
     QTableWidgetItem,
+    QHeaderView,
     QMessageBox,
     QDialog,
     QTabWidget,
     QListWidget,
     QGroupBox,
+    QFrame,
+    QScrollArea,
+    QSizePolicy,
 )
 from PySide6.QtCore import Qt
+
+from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.figure import Figure
 
 
 # ============================================================
 # PATHS
 # ============================================================
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+BASE_DIR = os.path.dirname(
+    os.path.dirname(
+        os.path.abspath(__file__)
+    )
+)
 
 RISK_PATH = os.path.join(
     BASE_DIR,
@@ -78,8 +90,31 @@ PREPAREDNESS_GUIDES = guides_module.PREPAREDNESS_GUIDES
 # ============================================================
 
 risk_df = pd.read_csv(RISK_PATH)
+
 impact_df = pd.read_csv(IMPACT_PATH)
+
 global_events_df = pd.read_csv(GLOBAL_EVENTS_PATH)
+
+
+# ============================================================
+# MATPLOTLIB CANVAS
+# ============================================================
+
+class ChartCanvas(FigureCanvas):
+
+    def __init__(self, parent=None):
+
+        self.figure = Figure(
+            figsize=(9, 4.8),
+            dpi=100
+        )
+
+        super().__init__(self.figure)
+
+        self.setParent(parent)
+        self.setMinimumSize(300, 220)
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.axes = self.figure.add_subplot(111)
 
 
 # ============================================================
@@ -88,14 +123,22 @@ global_events_df = pd.read_csv(GLOBAL_EVENTS_PATH)
 
 class PreparednessDialog(QDialog):
 
-    def __init__(self, disaster_type, parent=None):
+    def __init__(
+        self,
+        disaster_type,
+        parent=None
+    ):
+
         super().__init__(parent)
 
         self.setWindowTitle(
             f"Preparedness Guide - {disaster_type}"
         )
 
-        self.resize(700, 500)
+        self.resize(
+            700,
+            500
+        )
 
         layout = QVBoxLayout()
 
@@ -113,58 +156,66 @@ class PreparednessDialog(QDialog):
 
         layout.addWidget(title)
 
-        guide = PREPAREDNESS_GUIDES.get(disaster_type)
+        guide = PREPAREDNESS_GUIDES.get(
+            disaster_type
+        )
 
         if guide is None:
+
             message = QLabel(
-                "No preparedness guide is currently available "
-                "for this hazard."
+                "No preparedness guide is currently "
+                "available for this hazard."
             )
 
             message.setWordWrap(True)
+
             layout.addWidget(message)
 
             self.setLayout(layout)
+
             return
 
         tabs = QTabWidget()
 
-        # ----------------------------------------------------
         # BEFORE
-        # ----------------------------------------------------
 
         before_list = QListWidget()
 
         for item in guide["before"]:
-            before_list.addItem("• " + item)
+
+            before_list.addItem(
+                "• " + item
+            )
 
         tabs.addTab(
             before_list,
             "Before"
         )
 
-        # ----------------------------------------------------
         # DURING
-        # ----------------------------------------------------
 
         during_list = QListWidget()
 
         for item in guide["during"]:
-            during_list.addItem("• " + item)
+
+            during_list.addItem(
+                "• " + item
+            )
 
         tabs.addTab(
             during_list,
             "During"
         )
 
-        # ----------------------------------------------------
         # AFTER
-        # ----------------------------------------------------
 
         after_list = QListWidget()
 
         for item in guide["after"]:
-            after_list.addItem("• " + item)
+
+            after_list.addItem(
+                "• " + item
+            )
 
         tabs.addTab(
             after_list,
@@ -174,8 +225,8 @@ class PreparednessDialog(QDialog):
         layout.addWidget(tabs)
 
         warning = QLabel(
-            "⚠️ Always follow instructions from local authorities "
-            "and official emergency services."
+            "⚠️ Always follow instructions from local "
+            "authorities and official emergency services."
         )
 
         warning.setWordWrap(True)
@@ -190,13 +241,17 @@ class PreparednessDialog(QDialog):
 
         layout.addWidget(warning)
 
-        close_button = QPushButton("Close")
+        close_button = QPushButton(
+            "Close"
+        )
 
         close_button.clicked.connect(
             self.accept
         )
 
-        layout.addWidget(close_button)
+        layout.addWidget(
+            close_button
+        )
 
         self.setLayout(layout)
 
@@ -208,15 +263,23 @@ class PreparednessDialog(QDialog):
 class DisasterApp(QWidget):
 
     def __init__(self):
+
         super().__init__()
 
         self.setWindowTitle(
             "Natural Disaster Risk Analysis & Awareness System"
         )
 
-        self.resize(1100, 750)
+        self.resize(1250, 900)
+        self.setMinimumSize(1000, 700)
 
-        self.selected_country_data = pd.DataFrame()
+        self.selected_country_data = (
+            pd.DataFrame()
+        )
+
+        self.chart_canvas = None
+
+        self.current_chart = "impact"
 
         self.setup_ui()
 
@@ -230,6 +293,9 @@ class DisasterApp(QWidget):
     def setup_ui(self):
 
         main_layout = QVBoxLayout()
+        main_layout.setContentsMargins(12, 6, 12, 6)
+        main_layout.setSpacing(4)
+
 
         # ----------------------------------------------------
         # HEADER
@@ -239,13 +305,15 @@ class DisasterApp(QWidget):
             "🌍 Natural Disaster Risk Analysis & Awareness System"
         )
 
-        header.setAlignment(Qt.AlignCenter)
+        header.setAlignment(
+            Qt.AlignCenter
+        )
 
         header.setStyleSheet(
             """
-            font-size: 26px;
+            font-size: 24px;
             font-weight: bold;
-            padding: 15px;
+            padding: 4px;
             """
         )
 
@@ -253,35 +321,46 @@ class DisasterApp(QWidget):
 
 
         subtitle = QLabel(
-            "Historical disaster impact analysis and preparedness awareness"
+            "Historical disaster impact analysis and "
+            "preparedness awareness"
         )
 
-        subtitle.setAlignment(Qt.AlignCenter)
+        subtitle.setAlignment(
+            Qt.AlignCenter
+        )
 
         subtitle.setStyleSheet(
             """
-            font-size: 14px;
+            font-size: 13px;
             color: #666;
-            padding-bottom: 10px;
+            padding-bottom: 0px;
             """
         )
 
-        main_layout.addWidget(subtitle)
+        main_layout.addWidget(
+            subtitle
+        )
 
 
         # ----------------------------------------------------
-        # COUNTRY SELECTION
+        # COUNTRY / HAZARD SELECTION
         # ----------------------------------------------------
 
         selection_group = QGroupBox(
-            "Select Location"
+            "Select Location and Hazard"
         )
 
         selection_layout = QHBoxLayout()
+        selection_layout.setContentsMargins(8, 6, 8, 6)
+        selection_layout.setSpacing(8)
 
         self.country_box = QComboBox()
 
-        self.country_box.setMinimumWidth(300)
+        self.country_box.setMinimumWidth(260)
+        self.country_box.setSizePolicy(
+            QSizePolicy.Expanding,
+            QSizePolicy.Fixed
+        )
 
         self.country_box.currentIndexChanged.connect(
             self.country_changed
@@ -298,7 +377,11 @@ class DisasterApp(QWidget):
 
         self.hazard_box = QComboBox()
 
-        self.hazard_box.setMinimumWidth(250)
+        self.hazard_box.setMinimumWidth(240)
+        self.hazard_box.setSizePolicy(
+            QSizePolicy.Expanding,
+            QSizePolicy.Fixed
+        )
 
         selection_layout.addWidget(
             QLabel("Hazard:")
@@ -321,7 +404,6 @@ class DisasterApp(QWidget):
             analyze_button
         )
 
-
         selection_group.setLayout(
             selection_layout
         )
@@ -337,7 +419,6 @@ class DisasterApp(QWidget):
 
         cards_layout = QHBoxLayout()
 
-
         self.people_label = QLabel(
             "People Affected\n-"
         )
@@ -347,13 +428,12 @@ class DisasterApp(QWidget):
         )
 
         self.share_label = QLabel(
-            "Largest Impact Share\n-"
+            "Largest Recorded Impact Share\n-"
         )
 
         self.coverage_label = QLabel(
             "Data Coverage\n-"
         )
-
 
         card_labels = [
             self.people_label,
@@ -362,19 +442,21 @@ class DisasterApp(QWidget):
             self.coverage_label
         ]
 
-
         for label in card_labels:
 
             label.setAlignment(
                 Qt.AlignCenter
             )
 
+            label.setMinimumHeight(52)
+            label.setMaximumHeight(62)
+
             label.setStyleSheet(
                 """
                 border: 1px solid #cccccc;
                 border-radius: 8px;
-                padding: 15px;
-                font-size: 15px;
+                padding: 7px;
+                font-size: 14px;
                 """
             )
 
@@ -382,53 +464,72 @@ class DisasterApp(QWidget):
                 label
             )
 
-
         main_layout.addLayout(
             cards_layout
         )
 
 
         # ----------------------------------------------------
+        # CHART AREA
+        # ----------------------------------------------------
+
+        chart_title = QLabel("Data Visualization")
+        chart_title.setStyleSheet(
+            """
+            font-size: 18px;
+            font-weight: bold;
+            padding-top: 5px;
+            """
+        )
+        main_layout.addWidget(chart_title)
+
+        self.chart_container = QFrame()
+        self.chart_container.setFrameShape(QFrame.StyledPanel)
+        self.chart_container.setMinimumHeight(245)
+        self.chart_container.setMaximumHeight(270)
+        self.chart_layout = QVBoxLayout(self.chart_container)
+        self.chart_layout.setContentsMargins(2, 2, 2, 2)
+        self.chart_canvas = ChartCanvas(self.chart_container)
+        self.chart_layout.addWidget(self.chart_canvas)
+        main_layout.addWidget(self.chart_container, 0)
+
+        spacer_after_chart = QWidget()
+        spacer_after_chart.setFixedHeight(6)
+        main_layout.addWidget(spacer_after_chart)
+
+        # ----------------------------------------------------
         # TABLE
         # ----------------------------------------------------
 
-        table_title = QLabel(
-            "Historical Impact Profile"
-        )
-
+        table_title = QLabel("Historical Impact Profile")
         table_title.setStyleSheet(
             """
             font-size: 18px;
             font-weight: bold;
-            padding-top: 10px;
+            padding-top: 5px;
             """
         )
-
-        main_layout.addWidget(
-            table_title
-        )
-
+        main_layout.addWidget(table_title)
 
         self.table = QTableWidget()
-
         self.table.setColumnCount(4)
-
         self.table.setHorizontalHeaderLabels(
             [
                 "Disaster Type",
                 "People Affected",
-                "Impact Share (%)",
+                "Share of Recorded Impact (%)",
                 "Years Recorded"
             ]
         )
-
-        self.table.horizontalHeader().setStretchLastSection(
-            True
+        self.table.setAlternatingRowColors(True)
+        self.table.setFixedHeight(125)
+        self.table.verticalHeader().setDefaultSectionSize(28)
+        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.table.setSizePolicy(
+            QSizePolicy.Expanding,
+            QSizePolicy.Fixed
         )
-
-        main_layout.addWidget(
-            self.table
-        )
+        main_layout.addWidget(self.table)
 
 
         # ----------------------------------------------------
@@ -436,6 +537,7 @@ class DisasterApp(QWidget):
         # ----------------------------------------------------
 
         buttons_layout = QHBoxLayout()
+        buttons_layout.setSpacing(8)
 
 
         guide_button = QPushButton(
@@ -490,9 +592,20 @@ class DisasterApp(QWidget):
         )
 
 
-        main_layout.addLayout(
-            buttons_layout
-        )
+        for button in [
+            guide_button,
+            impact_button,
+            trend_button,
+            global_button
+        ]:
+            button.setMinimumHeight(34)
+            button.setMaximumHeight(38)
+            button.setSizePolicy(
+                QSizePolicy.Expanding,
+                QSizePolicy.Fixed
+            )
+
+        main_layout.addLayout(buttons_layout)
 
 
         # ----------------------------------------------------
@@ -500,21 +613,23 @@ class DisasterApp(QWidget):
         # ----------------------------------------------------
 
         disclaimer = QLabel(
-            "⚠️ This system uses historical disaster data for "
-            "risk awareness and preparedness. It is not a "
-            "real-time emergency warning system and does not "
-            "provide reliable future disaster predictions."
+            "⚠️ This system uses historical disaster data "
+            "for risk awareness and preparedness. "
+            "It is not a real-time emergency warning system "
+            "and does not provide reliable future disaster "
+            "predictions."
         )
 
-        disclaimer.setWordWrap(True)
+        disclaimer.setWordWrap(
+            True
+        )
 
         disclaimer.setStyleSheet(
             """
             background-color: #f8f9fa;
             border: 1px solid #ddd;
             border-radius: 6px;
-            padding: 10px;
-            margin-top: 10px;
+            padding: 6px;
             """
         )
 
@@ -535,7 +650,9 @@ class DisasterApp(QWidget):
     def load_countries(self):
 
         countries = sorted(
-            risk_df["entity"].dropna().unique()
+            risk_df[
+                "entity"
+            ].dropna().unique()
         )
 
         self.country_box.addItems(
@@ -549,7 +666,9 @@ class DisasterApp(QWidget):
 
     def country_changed(self):
 
-        country = self.country_box.currentText()
+        country = (
+            self.country_box.currentText()
+        )
 
         if not country:
             return
@@ -563,15 +682,20 @@ class DisasterApp(QWidget):
             ascending=False
         )
 
-        self.selected_country_data = country_data
+        self.selected_country_data = (
+            country_data
+        )
 
         self.hazard_box.clear()
 
         self.hazard_box.addItems(
-            country_data["disaster_type"].tolist()
+            country_data[
+                "disaster_type"
+            ].tolist()
         )
 
         if len(country_data) > 0:
+
             self.show_profile()
 
 
@@ -581,7 +705,9 @@ class DisasterApp(QWidget):
 
     def show_profile(self):
 
-        country = self.country_box.currentText()
+        country = (
+            self.country_box.currentText()
+        )
 
         if not country:
             return
@@ -600,13 +726,14 @@ class DisasterApp(QWidget):
 
             return
 
-
         country_data = country_data.sort_values(
             "total_people_affected",
             ascending=False
         )
 
-        self.selected_country_data = country_data
+        self.selected_country_data = (
+            country_data
+        )
 
 
         # ----------------------------------------------------
@@ -617,16 +744,13 @@ class DisasterApp(QWidget):
             "total_people_affected"
         ].sum()
 
-
         main_disaster = country_data.iloc[0][
             "disaster_type"
         ]
 
-
         largest_share = country_data.iloc[0][
             "impact_share"
         ]
-
 
         years = country_data[
             "years_recorded"
@@ -634,22 +758,23 @@ class DisasterApp(QWidget):
 
 
         self.people_label.setText(
-            f"People Affected\n{total_people:,.0f}"
+            f"People Affected\n"
+            f"{total_people:,.0f}"
         )
-
 
         self.main_disaster_label.setText(
-            f"Main Disaster\n{main_disaster}"
+            f"Main Recorded Impact Type\n"
+            f"{main_disaster}"
         )
-
 
         self.share_label.setText(
-            f"Largest Impact Share\n{largest_share:.2f}%"
+            f"Largest Recorded Impact Share\n"
+            f"{largest_share:.2f}%"
         )
 
-
         self.coverage_label.setText(
-            f"Data Coverage\n{years} years"
+            f"Maximum Recorded Coverage\n"
+            f"{int(years)} years"
         )
 
 
@@ -661,76 +786,63 @@ class DisasterApp(QWidget):
             len(country_data)
         )
 
-
         for row, (_, data) in enumerate(
             country_data.iterrows()
         ):
 
-            self.table.setItem(
-                row,
-                0,
-                QTableWidgetItem(
-                    str(data["disaster_type"])
+            values = [
+                str(
+                    data["disaster_type"]
+                ),
+
+                f"{data['total_people_affected']:,.0f}",
+
+                f"{data['impact_share']:.2f}",
+
+                str(
+                    int(
+                        data["years_recorded"]
+                    )
                 )
-            )
+            ]
 
+            for column, value in enumerate(
+                values
+            ):
 
-            self.table.setItem(
-                row,
-                1,
-                QTableWidgetItem(
-                    f"{data['total_people_affected']:,.0f}"
+                self.table.setItem(
+                    row,
+                    column,
+                    QTableWidgetItem(
+                        value
+                    )
                 )
-            )
+
+        self.table.resizeColumnsToContents()
 
 
-            self.table.setItem(
-                row,
-                2,
-                QTableWidgetItem(
-                    f"{data['impact_share']:.2f}"
-                )
-            )
+        # ----------------------------------------------------
+        # DEFAULT CHART
+        # ----------------------------------------------------
 
-
-            self.table.setItem(
-                row,
-                3,
-                QTableWidgetItem(
-                    str(int(data["years_recorded"]))
-                )
-            )
+        self.show_impact_profile()
 
 
     # ========================================================
-    # PREPAREDNESS GUIDE
+    # CLEAR CHART
     # ========================================================
 
-    def show_preparedness_guide(self):
+    def clear_chart(self):
 
-        disaster_type = self.hazard_box.currentText()
+        self.chart_canvas.figure.clear()
 
-        if not disaster_type:
-
-            QMessageBox.information(
-                self,
-                "No Hazard Selected",
-                "Please select a hazard first."
-            )
-
-            return
-
-
-        dialog = PreparednessDialog(
-            disaster_type,
-            self
+        self.chart_canvas.axes = (
+            self.chart_canvas.figure.add_subplot(111)
         )
 
-        dialog.exec()
-
 
     # ========================================================
-    # IMPACT PROFILE
+    # IMPACT PROFILE CHART
     # ========================================================
 
     def show_impact_profile(self):
@@ -738,25 +850,65 @@ class DisasterApp(QWidget):
         if self.selected_country_data.empty:
             return
 
+        country = (
+            self.country_box.currentText()
+        )
 
-        data = self.selected_country_data
+        data = self.selected_country_data.copy()
 
-        lines = []
+        data = data.sort_values(
+            "impact_share",
+            ascending=True
+        )
 
-        for _, row in data.iterrows():
 
-            lines.append(
-                f"{row['disaster_type']}: "
-                f"{row['total_people_affected']:,.0f} people "
-                f"({row['impact_share']:.2f}%)"
+        self.clear_chart()
+
+        ax = self.chart_canvas.axes
+
+        bars = ax.barh(
+            data["disaster_type"],
+            data["impact_share"]
+        )
+
+        ax.set_xlabel(
+            "Share of Recorded Impact (%)"
+        )
+
+        ax.set_ylabel(
+            "Disaster Type"
+        )
+
+        ax.set_title(
+            f"Historical Disaster Impact Profile — {country}"
+        )
+
+        ax.grid(
+            axis="x",
+            alpha=0.25
+        )
+
+
+        for bar in bars:
+
+            width = bar.get_width()
+
+            ax.text(
+                width,
+                bar.get_y()
+                + bar.get_height() / 2,
+                f" {width:.2f}%",
+                va="center"
             )
 
 
-        QMessageBox.information(
-            self,
-            "Historical Impact Profile",
-            "\n".join(lines)
-        )
+        self.chart_canvas.figure.tight_layout()
+
+        self.chart_canvas.draw()
+        self.chart_canvas.show()
+        self.chart_container.show()
+
+        self.current_chart = "impact"
 
 
     # ========================================================
@@ -765,7 +917,9 @@ class DisasterApp(QWidget):
 
     def show_impact_trend(self):
 
-        country = self.country_box.currentText()
+        country = (
+            self.country_box.currentText()
+        )
 
         if not country:
             return
@@ -775,12 +929,13 @@ class DisasterApp(QWidget):
             risk_df["entity"] == country
         ]
 
-
         if country_info.empty:
             return
 
 
-        code = country_info.iloc[0]["code"]
+        code = country_info.iloc[0][
+            "code"
+        ]
 
 
         country_data = impact_df[
@@ -799,10 +954,13 @@ class DisasterApp(QWidget):
             return
 
 
-        disaster_type = self.hazard_box.currentText()
+        disaster_type = (
+            self.hazard_box.currentText()
+        )
 
 
         column_map = {
+
             "Drought":
                 "total_affected_drought_yearly",
 
@@ -834,49 +992,88 @@ class DisasterApp(QWidget):
         )
 
 
-        if column not in country_data.columns:
+        if column is None:
 
             QMessageBox.information(
                 self,
                 "No Data",
-                "No trend data is available for this hazard."
+                "No trend data is available for "
+                "this hazard."
             )
 
             return
 
 
         trend = country_data[
-            ["year", column]
+            [
+                "year",
+                column
+            ]
         ].dropna()
 
 
         if trend.empty:
+
+            QMessageBox.information(
+                self,
+                "No Data",
+                "No recorded impact values are "
+                "available for this hazard."
+            )
+
             return
 
 
-        text = (
-            f"Historical Impact Trend\n\n"
-            f"Country: {country}\n"
-            f"Hazard: {disaster_type}\n\n"
+        trend = trend.sort_values(
+            "year"
         )
 
 
-        recent = trend.tail(10)
+        self.clear_chart()
+
+        ax = self.chart_canvas.axes
 
 
-        for _, row in recent.iterrows():
-
-            text += (
-                f"{int(row['year'])}: "
-                f"{row[column]:,.0f} people affected\n"
-            )
-
-
-        QMessageBox.information(
-            self,
-            "Impact Trend",
-            text
+        ax.plot(
+            trend["year"],
+            trend[column],
+            marker="o",
+            markersize=3
         )
+
+
+        ax.set_title(
+            f"Historical Impact Trend — "
+            f"{country} — {disaster_type}"
+        )
+
+        ax.set_xlabel(
+            "Year"
+        )
+
+        ax.set_ylabel(
+            "People Affected"
+        )
+
+        ax.grid(
+            True,
+            alpha=0.25
+        )
+
+
+        ax.ticklabel_format(
+            style="plain",
+            axis="y"
+        )
+
+
+        self.chart_canvas.figure.tight_layout()
+
+        self.chart_canvas.draw()
+        self.chart_canvas.show()
+        self.chart_container.show()
+
+        self.current_chart = "trend"
 
 
     # ========================================================
@@ -885,14 +1082,19 @@ class DisasterApp(QWidget):
 
     def show_global_trend(self):
 
-        disaster_type = self.hazard_box.currentText()
+        disaster_type = (
+            self.hazard_box.currentText()
+        )
+
 
         if not disaster_type:
-            disaster_type = "Flood"
+
+            disaster_type = "All disasters"
 
 
         global_data = global_events_df[
-            global_events_df["entity"] == disaster_type
+            global_events_df["entity"]
+            == disaster_type
         ].copy()
 
 
@@ -907,28 +1109,92 @@ class DisasterApp(QWidget):
             return
 
 
-        recent = global_data.tail(10)
-
-
-        text = (
-            f"Global Reported Events\n\n"
-            f"Disaster type: {disaster_type}\n\n"
+        global_data = global_data.sort_values(
+            "year"
         )
 
 
-        for _, row in recent.iterrows():
+        self.clear_chart()
 
-            text += (
-                f"{int(row['year'])}: "
-                f"{int(row['n_events'])} reported events\n"
+        ax = self.chart_canvas.axes
+
+
+        ax.plot(
+            global_data["year"],
+            global_data["n_events"],
+            marker="o",
+            markersize=3
+        )
+
+
+        if disaster_type == "All disasters":
+
+            title = (
+                "Global Reported Natural "
+                "Disaster Events"
+            )
+
+        else:
+
+            title = (
+                f"Global Reported {disaster_type} Events"
             )
 
 
-        QMessageBox.information(
-            self,
-            "Global Event Trend",
-            text
+        ax.set_title(
+            title
         )
+
+        ax.set_xlabel(
+            "Year"
+        )
+
+        ax.set_ylabel(
+            "Reported Events"
+        )
+
+        ax.grid(
+            True,
+            alpha=0.25
+        )
+
+
+        self.chart_canvas.figure.tight_layout()
+
+        self.chart_canvas.draw()
+        self.chart_canvas.show()
+        self.chart_container.show()
+
+        self.current_chart = "global"
+
+
+    # ========================================================
+    # PREPAREDNESS GUIDE
+    # ========================================================
+
+    def show_preparedness_guide(self):
+
+        disaster_type = (
+            self.hazard_box.currentText()
+        )
+
+        if not disaster_type:
+
+            QMessageBox.information(
+                self,
+                "No Hazard Selected",
+                "Please select a hazard first."
+            )
+
+            return
+
+
+        dialog = PreparednessDialog(
+            disaster_type,
+            self
+        )
+
+        dialog.exec()
 
 
 # ============================================================
@@ -937,7 +1203,9 @@ class DisasterApp(QWidget):
 
 if __name__ == "__main__":
 
-    app = QApplication(sys.argv)
+    app = QApplication(
+        sys.argv
+    )
 
     window = DisasterApp()
 
