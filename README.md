@@ -41,10 +41,15 @@ The project includes:
 ## What I Built
 
 **Data Pipeline** — Cleaned and integrated historical disaster frequency and impact data.
+
 **Analytics Engine** — Performed statistical analysis, trend analysis, correlation and outlier detection.
+
 **Machine Learning** — Built and evaluated regression models for historical disaster-event patterns.
+
 **Risk Profiling** — Generated country- and hazard-level historical impact profiles.
+
 **Applications** — Built both a PySide6 desktop application and a Streamlit web application with a public live demo.
+
 **Preparedness System** — Added disaster-specific preparedness guidance for users.
 
 ## Applications
