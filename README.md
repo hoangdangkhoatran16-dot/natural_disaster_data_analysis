@@ -6,6 +6,9 @@ A data analysis and awareness system that explores historical natural disaster e
 
 The project combines statistical analysis, machine learning and interactive applications to identify patterns in disaster frequency, impact and historical trends.
 
+**Live Demo:**  
+https://natural-disaster-risk-analysis.streamlit.app/
+
 > This project analyses historical data and is not a real-time warning or reliable future disaster prediction system.
 
 ## Key Questions
@@ -60,8 +63,6 @@ Built with PySide6 for interactive country and disaster analysis.
 ### Web Application
 Built with Streamlit and deployed online.
 
-**Live Demo:**  
-https://natural-disaster-risk-analysis.streamlit.app/
 
 ## Technologies
 
